@@ -3,34 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>安全验证 - 获得黑客问卷调查</title>
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <title>获得黑客问卷调查</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: "Microsoft YaHei", sans-serif;
-            background: #ffffff; /* 初始状态给纯白，模仿官方验证环境 */
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
             display: flex;
             align-items: center;
             justify-content: center;
             height: 100vh;
             user-select: none;
-            transition: background 0.5s ease;
         }
-
-        /* 🔒 初始验证盒子 */
-        .verification-wrap {
-            text-align: center;
-            padding: 20px;
-        }
-        .cf-notice {
-            font-size: 16px;
-            color: #333;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-
-        /* 📝 选择题区域（初始强制隐藏） */
         .box {
             width: 90%;
             max-width: 380px;
@@ -45,6 +29,13 @@
             margin-bottom: 18px;
             color: #222;
         }
+        .question {
+            font-size: 15px;
+            color: #555;
+            margin-bottom: 22px;
+            line-height: 1.6;
+            text-align: left;
+        }
         .option-item {
             width: 100%;
             padding: 12px 15px;
@@ -54,20 +45,37 @@
             text-align: left;
             cursor: pointer;
             transition: 0.2s;
+            position: relative; /* 为了给半透明遮罩层定位 */
         }
         .option-item:hover {
             background: #f1f8e9;
             border-color: #81c784;
         }
+
+        /* 被选中时的背景图样式 */
         .option-item.selected {
-            color: #ffffff !important;
-            border-color: #555555 !important;
-            background-color: #555555 !important; 
-            background-image: url('bg.png') !important; 
-            background-size: cover !important;
-            background-position: center !important;
-            background-repeat: no-repeat !important;
+            background: transparent;
+            color: #222;
+            border-color: #81c784;
+
+            /* 这里记得改成你真实的图片名字，比如 'minecraft.png' */
+            background-image: url('bg.png'); 
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 1;
         }
+
+        /* 半透明遮罩，防止背景图太深看不清字 */
+        .option-item.selected::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.6); 
+            z-index: -1;
+            border-radius: 10px;
+        }
+
         #submit {
             width: 100%;
             height: 46px;
@@ -80,7 +88,7 @@
             margin-top: 10px;
         }
 
-        /* 🎬 视频全屏样式 */
+        /* 视频全屏样式 */
         .scare-container {
             position: fixed;
             top: 0; left: 0;
@@ -88,26 +96,18 @@
             background: #000;
             z-index: 9999;
         }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        
-        /* 辅助类 */
+        video {
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
         .hidden { display: none !important; }
         .no-cursor { cursor: none !important; }
     </style>
 </head>
 <body oncontextmenu="return false;">
-
-    <div class="verification-wrap" id="authGateway">
-        <div class="cf-notice" id="noticeText">⚙️ 正在检查您的浏览器是否安全...</div>
-        
-        <div class="cf-turnstile" 
-             data-sitekey="0x4AAAAAADb-rCwB0lW3mIkoxO4-E89vvGI" 
-             data-callback="onCaptchaSuccess">
-        </div>
-    </div>
-
-    <div class="box hidden" id="questionBox">
+    <div class="box" id="questionBox">
         <div class="title">你拥有其他的黑客吗</div>
+        <div class="question"></div>
         <div class="option-item" data-val="A">A. 有</div>
         <div class="option-item" data-val="B">B. 没有</div>
         <div class="option-item" data-val="C">C. 不知道</div>        
@@ -119,23 +119,44 @@
     </div>
 
     <script>
-        const authGateway = document.getElementById('authGateway');
-        const questionBox = document.getElementById('questionBox');
         const submit = document.getElementById('submit');
+        const questionBox = document.getElementById('questionBox');
         const videoWrap = document.getElementById('video-wrap');
         const video = document.getElementById('video');
         const options = document.querySelectorAll('.option-item');
         let selected = null;
-        let hasPassed = false; // 记录是否已经进入下一关，防止重复触发
 
-        // 🔑 核心跳转逻辑（成功通过验证，或者触发5秒保底时执行）
-        function proceedToQuiz() {
-            if (hasPassed) return; // 如果已经进去了，就不再重复执行
-            hasPassed = true;
+        // 选项点击选中
+        options.forEach(opt => {
+            opt.onclick = () => {
+                options.forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                selected = opt.dataset.val;
+            }
+        });
 
-            // 1. 瞬间隐藏人机验证盾牌
-            authGateway.classList.add('hidden');
-            
-            // 2. 将网页背景切换成原本的渐变绿色，并把题目展示出来
-            document.body.style.background = "linear-gradient(135deg, #e8f5e9, #c8e6c9)";
-            questionBox.classList.remove('
+        // 全屏函数
+        function tryFullScreen() {
+            const el = document.documentElement;
+            const rfs = el.requestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+            if (rfs) rfs.call(el).catch(()=>{});
+        }
+
+        // 无论选哪个，提交直接跳转
+        submit.onclick = function() {
+            questionBox.classList.add('hidden');
+            videoWrap.classList.remove('hidden');
+            document.body.classList.add('no-cursor');
+
+            video.play().catch(()=>{
+                video.muted = true;
+                video.play();
+            });
+            tryFullScreen();
+        }
+
+        // 离开页面拦截
+        window.onbeforeunload = () => "确定要离开吗？离开此网页你将无法获得牛逼的黑客客户端。";
+    </script>
+</body>
+</html>
