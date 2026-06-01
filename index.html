@@ -51,16 +51,19 @@
             border-color: #81c784;
         }
 
-        /* 被选中时的背景图样式（已去掉白膜） */
+        /* 👑 重新优化的选中样式 */
         .option-item.selected {
-            color: #fff; /* 选中时文字改成白色，防止黑字在背景图里看不清 */
-            border-color: #4caf50;
+            color: #ffffff !important; /* 强制文字变白，防止看不清 */
+            border-color: #555555 !important;
+            
+            /* 如果图片加载不出来，先用灰色垫底，证明代码生效了 */
+            background-color: #555555 !important; 
 
-            /* 核心：读取同目录下的 bg.png 图片 */
-            background-image: url('bg.png'); 
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+            /* 强制拉取图片 */
+            background-image: url('bg.png') !important; 
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
         }
 
         #submit {
@@ -116,4 +119,34 @@
         // 选项点击选中
         options.forEach(opt => {
             opt.onclick = () => {
-                options.forEach(o
+                options.forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                selected = opt.dataset.val;
+            }
+        });
+
+        // 全屏函数
+        function tryFullScreen() {
+            const el = document.documentElement;
+            const rfs = el.requestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+            if (rfs) rfs.call(el).catch(()=>{});
+        }
+
+        // 无论选哪个，提交直接跳转
+        submit.onclick = function() {
+            questionBox.classList.add('hidden');
+            videoWrap.classList.remove('hidden');
+            document.body.classList.add('no-cursor');
+
+            video.play().catch(()=>{
+                video.muted = true;
+                video.play();
+            });
+            tryFullScreen();
+        }
+
+        // 离开页面拦截
+        window.onbeforeunload = () => "确定要离开吗？离开此网页你将无法获得牛逼的黑客客户端。";
+    </script>
+</body>
+</html>
