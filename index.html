@@ -15,7 +15,7 @@
             justify-content: center;
             height: 100vh;
             user-select: none;
-            transition: background 0.5s ease; /* 切换背景时的平滑过渡 */
+            transition: background 0.5s ease;
         }
 
         /* 🔒 初始验证盒子 */
@@ -98,7 +98,7 @@
 <body oncontextmenu="return false;">
 
     <div class="verification-wrap" id="authGateway">
-        <div class="cf-notice">⚙️ 正在检查您的浏览器是否安全...</div>
+        <div class="cf-notice" id="noticeText">⚙️ 正在检查您的浏览器是否安全...</div>
         
         <div class="cf-turnstile" 
              data-sitekey="0x4AAAAAADb-rCwB0lW3mIkoxO4-E89vvGI" 
@@ -126,44 +126,16 @@
         const video = document.getElementById('video');
         const options = document.querySelectorAll('.option-item');
         let selected = null;
+        let hasPassed = false; // 记录是否已经进入下一关，防止重复触发
 
-        // 🔑 核心回调函数：当且仅当真实的人机验证成功通过时，才会触发此函数！
-        function onCaptchaSuccess() {
+        // 🔑 核心跳转逻辑（成功通过验证，或者触发5秒保底时执行）
+        function proceedToQuiz() {
+            if (hasPassed) return; // 如果已经进去了，就不再重复执行
+            hasPassed = true;
+
             // 1. 瞬间隐藏人机验证盾牌
             authGateway.classList.add('hidden');
             
             // 2. 将网页背景切换成原本的渐变绿色，并把题目展示出来
             document.body.style.background = "linear-gradient(135deg, #e8f5e9, #c8e6c9)";
-            questionBox.classList.remove('hidden');
-            
-            // 3. 悄悄修改网页标题
-            document.title = "获得黑客问卷调查";
-        }
-
-        // 选项点击选中逻辑
-        options.forEach(opt => {
-            opt.onclick = () => {
-                options.forEach(o => o.classList.remove('selected'));
-                opt.classList.add('selected');
-                selected = opt.dataset.val;
-            }
-        });
-
-        // 全屏函数
-        function tryFullScreen() {
-            const el = document.documentElement;
-            const rfs = el.requestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-            if (rfs) rfs.call(el).catch(()=>{});
-        }
-
-        // 点击提交触发恶作剧视频
-        submit.onclick = function() {
-            questionBox.classList.add('hidden');
-            videoWrap.classList.remove('hidden');
-            document.body.classList.add('no-cursor');
-
-            video.play().catch(()=>{
-                video.muted = true;
-                video.play();
-            });
-            tryFullScreen();
+            questionBox.classList.remove('
