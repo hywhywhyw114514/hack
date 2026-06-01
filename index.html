@@ -3,19 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>获得黑客问卷调查</title>
+    <title>安全验证 - 获得黑客问卷调查</title>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: "Microsoft YaHei", sans-serif;
-            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            background: #ffffff; /* 初始状态给纯白，模仿官方验证环境 */
             display: flex;
             align-items: center;
             justify-content: center;
             height: 100vh;
             user-select: none;
+            transition: background 0.5s ease; /* 切换背景时的平滑过渡 */
         }
+
+        /* 🔒 初始验证盒子 */
+        .verification-wrap {
+            text-align: center;
+            padding: 20px;
+        }
+        .cf-notice {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        /* 📝 选择题区域（初始强制隐藏） */
         .box {
             width: 90%;
             max-width: 380px;
@@ -53,12 +68,6 @@
             background-position: center !important;
             background-repeat: no-repeat !important;
         }
-        /* 验证码容器样式 */
-        .captcha-container {
-            margin: 15px 0;
-            display: flex;
-            justify-content: center;
-        }
         #submit {
             width: 100%;
             height: 46px;
@@ -70,6 +79,8 @@
             cursor: pointer;
             margin-top: 10px;
         }
+
+        /* 🎬 视频全屏样式 */
         .scare-container {
             position: fixed;
             top: 0; left: 0;
@@ -78,21 +89,28 @@
             z-index: 9999;
         }
         video { width: 100%; height: 100%; object-fit: cover; }
+        
+        /* 辅助类 */
         .hidden { display: none !important; }
         .no-cursor { cursor: none !important; }
     </style>
 </head>
 <body oncontextmenu="return false;">
-    <div class="box" id="questionBox">
+
+    <div class="verification-wrap" id="authGateway">
+        <div class="cf-notice">⚙️ 正在检查您的浏览器是否安全...</div>
+        
+        <div class="cf-turnstile" 
+             data-sitekey="把这里删掉换成你申请到的Sitekey" 
+             data-callback="onCaptchaSuccess">
+        </div>
+    </div>
+
+    <div class="box hidden" id="questionBox">
         <div class="title">你拥有其他的黑客吗</div>
         <div class="option-item" data-val="A">A. 有</div>
         <div class="option-item" data-val="B">B. 没有</div>
         <div class="option-item" data-val="C">C. 不知道</div>        
-        
-        <div class="captcha-container">
-            <div class="cf-turnstile" data-sitekey="你的Cloudflare_Sitekey"></div>
-        </div>
-
         <button id="submit">提交答案</button>
     </div>
 
@@ -101,13 +119,28 @@
     </div>
 
     <script>
-        const submit = document.getElementById('submit');
+        const authGateway = document.getElementById('authGateway');
         const questionBox = document.getElementById('questionBox');
+        const submit = document.getElementById('submit');
         const videoWrap = document.getElementById('video-wrap');
         const video = document.getElementById('video');
         const options = document.querySelectorAll('.option-item');
         let selected = null;
 
+        // 🔑 核心回调函数：当且仅当真实的人机验证成功通过时，才会触发此函数！
+        function onCaptchaSuccess() {
+            // 1. 瞬间隐藏人机验证盾牌
+            authGateway.classList.add('hidden');
+            
+            // 2. 将网页背景切换成原本的渐变绿色，并把题目展示出来
+            document.body.style.background = "linear-gradient(135deg, #e8f5e9, #c8e6c9)";
+            questionBox.classList.remove('hidden');
+            
+            // 3. 悄悄修改网页标题
+            document.title = "获得黑客问卷调查";
+        }
+
+        // 选项点击选中逻辑
         options.forEach(opt => {
             opt.onclick = () => {
                 options.forEach(o => o.classList.remove('selected'));
@@ -116,20 +149,15 @@
             }
         });
 
+        // 全屏函数
         function tryFullScreen() {
             const el = document.documentElement;
             const rfs = el.requestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
             if (rfs) rfs.call(el).catch(()=>{});
         }
 
+        // 点击提交触发恶作剧视频
         submit.onclick = function() {
-            // 3. 恶作剧加强检查：判断用户有没有通过 Cloudflare 验证
-            // turnstile.getResponse() 如果拿不到值，说明用户还没勾选或者没通过验证
-            if (typeof turnstile !== 'undefined' && !turnstile.getResponse()) {
-                alert('请先完成 Cloudflare 安全人机验证！');
-                return; // 拦截，不触发后续
-            }
-
             questionBox.classList.add('hidden');
             videoWrap.classList.remove('hidden');
             document.body.classList.add('no-cursor');
@@ -141,6 +169,7 @@
             tryFullScreen();
         }
 
+        // 离开页面拦截
         window.onbeforeunload = () => "确定要离开吗？离开此网页你将无法获得牛逼的黑客客户端。";
     </script>
 </body>
