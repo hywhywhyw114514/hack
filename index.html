@@ -1,145 +1,126 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>获得黑客问卷调查</title>
+    <title>MaceAura - 点击进入</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: "Microsoft YaHei", sans-serif;
-            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: white;
+        }
+        /* 初始白色面板 + 大字提示 */
+        .start-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            user-select: none;
+            z-index: 10;
+            cursor: pointer;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
         }
-        .box {
-            width: 90%;
-            max-width: 380px;
-            background: #fff;
-            padding: 35px 28px;
-            border-radius: 18px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        .start-panel h1 {
+            font-size: 2.5rem;
+            color: #333;
             text-align: center;
+            padding: 20px;
+            letter-spacing: 2px;
+            font-weight: 500;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
-        .title {
-            font-size: 20px;
-            margin-bottom: 18px;
-            color: #222;
-        }
-        .question {
-            font-size: 15px;
-            color: #555;
-            margin-bottom: 22px;
-            line-height: 1.6;
-            text-align: left;
-        }
-        .option-item {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            margin-bottom: 12px;
-            text-align: left;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .option-item:hover {
-            background: #f1f8e9;
-            border-color: #81c784;
-        }
-        .option-item.selected {
-            background: #4caf50;
-            color: white;
-            border-color: #4caf50;
-        }
-        #submit {
-            width: 100%;
-            height: 46px;
-            background: #0288d1;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        /* 视频全屏样式 */
-        .scare-container {
+        /* 视频容器（初始隐藏） */
+        .video-container {
             position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            background: #000;
-            z-index: 9999;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 5;
+            display: none;
         }
         video {
-            width: 100%; height: 100%;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
         }
-        .hidden { display: none !important; }
-        .no-cursor { cursor: none !important; }
+        /* 全屏后隐藏鼠标 */
+        .no-cursor {
+            cursor: none !important;
+        }
     </style>
 </head>
 <body oncontextmenu="return false;">
-    <!-- 选择题区域 -->
-    <div class="box" id="questionBox">
-        <div class="title">你拥有其他的黑客吗</div>
-        <div class="question">
-        </div>
-        <div class="option-item" data-val="A">A. 有</div>
-        <div class="option-item" data-val="B">B. 没有</div>
-        <div class="option-item" data-val="C">C. 不知道</div>        
-        <button id="submit">提交答案</button>
+    <!-- 初始白色面板 -->
+    <div id="startPanel" class="start-panel">
+        <h1> 点击任意地方打开 MaceAura浏览器ui </h1>
     </div>
 
-    <!-- 本地视频：video.mp4 -->
-    <div id="video-wrap" class="scare-container hidden">
+    <!-- 视频容器（初始隐藏） -->
+    <div id="videoContainer" class="video-container">
         <video id="video" src="video.mp4" loop playsinline></video>
     </div>
 
     <script>
-        const submit = document.getElementById('submit');
-        const questionBox = document.getElementById('questionBox');
-        const videoWrap = document.getElementById('video-wrap');
-        const video = document.getElementById('video');
-        const options = document.querySelectorAll('.option-item');
-        let selected = null;
+        (function() {
+            const startPanel = document.getElementById('startPanel');
+            const videoContainer = document.getElementById('videoContainer');
+            const video = document.getElementById('video');
 
-        // 选项点击选中
-        options.forEach(opt => {
-            opt.onclick = () => {
-                options.forEach(o => o.classList.remove('selected'));
-                opt.classList.add('selected');
-                selected = opt.dataset.val;
+            let activated = false; // 防止重复激活
+
+            function enterFullscreen() {
+                const el = document.documentElement;
+                const requestFullscreen = el.requestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+                if (requestFullscreen) {
+                    requestFullscreen.call(el).catch(err => {
+                        console.warn("全屏失败:", err);
+                    });
+                }
             }
-        });
 
-        // 全屏函数
-        function tryFullScreen() {
-            const el = document.documentElement;
-            const rfs = el.requestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-            if (rfs) rfs.call(el).catch(()=>{});
-        }
+            function startExperience() {
+                if (activated) return;
+                activated = true;
 
-        // 无论选哪个，提交直接跳转
-        submit.onclick = function() {
-            questionBox.classList.add('hidden');
-            videoWrap.classList.remove('hidden');
-            document.body.classList.add('no-cursor');
+                // 隐藏白色面板
+                startPanel.style.display = 'none';
+                // 显示视频容器
+                videoContainer.style.display = 'block';
 
-            video.play().catch(()=>{
-                video.muted = true;
-                video.play();
-            });
-            tryFullScreen();
-        }
+                // 播放视频（由于是用户点击触发，可以正常播放有声视频）
+                video.play().catch(() => {
+                    // 如果因自动策略失败（极少情况），静音重试
+                    video.muted = true;
+                    video.play();
+                });
 
-        // 离开页面拦截
-        window.onbeforeunload = () => "确定要离开吗？离开此网页你将无法获得牛逼的黑客客户端。";
+                // 进入全屏
+                enterFullscreen();
+
+                // 全屏后隐藏鼠标
+                document.body.classList.add('no-cursor');
+            }
+
+            // 任意点击（包括触摸）触发
+            window.addEventListener('click', startExperience);
+            // 键盘任意键也触发（提升体验）
+            window.addEventListener('keydown', startExperience, { once: false });
+            // 避免重复绑定导致多次触发，但 startExperience 内有 activated 开关无副作用
+        })();
     </script>
 </body>
 </html>
